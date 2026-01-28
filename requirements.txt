@@ -1,0 +1,2 @@
+# SSOT Task Manager Requirements
+pydantic>=2.0.0
