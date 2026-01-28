@@ -1,0 +1,57 @@
+name: Create Supabase Table
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "create" to confirm table creation'
+        required: true
+        default: ''
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm == 'create'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: pip install psycopg2-binary
+      
+      - name: Run Migration
+        env:
+          SUPABASE_DB_URL: postgresql://postgres.mocerqjnksmhcjzxrewo:${{ secrets.SUPABASE_DB_PASSWORD }}@aws-0-us-east-1.pooler.supabase.com:6543/postgres
+        run: |
+          python3 << 'EOF'
+          import psycopg2
+          import os
+          
+          # Read migration SQL
+          with open("supabase/migrations/001_create_ssot_task_lists.sql") as f:
+              sql = f.read()
+          
+          # Connect and execute
+          try:
+              conn = psycopg2.connect(os.environ["SUPABASE_DB_URL"])
+              conn.autocommit = True
+              cur = conn.cursor()
+              
+              # Execute migration
+              cur.execute(sql)
+              
+              # Verify table exists
+              cur.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'ssot_task_lists'")
+              exists = cur.fetchone()[0] > 0
+              
+              if exists:
+                  print("✅ Table ssot_task_lists created successfully!")
+              else:
+                  print("❌ Table creation may have failed")
+              
+              cur.close()
+              conn.close()
+          except Exception as e:
+              print(f"Error: {e}")
+              raise
+          EOF
